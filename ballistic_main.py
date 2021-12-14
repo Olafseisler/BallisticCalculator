@@ -1,18 +1,18 @@
 import math
 import os
 from random import randrange
-from bisect import bisect_left
 
 os.system("cls")
 
+# default parameters
 v = 800  # m/s
 a = 0  # deg
 x = 0  # m
-y = 4000  # m
+y = 1.8  # m
 p = -0.00015 * y + 1.225  # kg/m^3
 C = 0.29
-A = 0.02  # m^2 # 7.62 : 4.806442e-5,
-m = 130  # kg
+A = 0.00004806  # m^2 # 7.62 : 4.806442e-5,
+m = 0.0095  # kg
 g = 9.8067  # m/s^2
 timestep = 0.005  # s
 time = 0  # s
@@ -26,7 +26,7 @@ mach_numbers_G7 = {
     1.05: 0.341, 1.075: 0.345, 1.1: 0.347,
     1.15: 0.348, 1.2: 0.348, 1.3: 0.343,
     1.4: 0.336, 1.5: 0.328, 1.6: 0.321,
-    1.8	: 0.304, 2 : 0.292, 2.2 : 0.282,
+    1.8	: 0.304, 2: 0.292, 2.2: 0.282,
     2.4	: 0.27
 }
 G7_keys = list(mach_numbers_G7.keys())
@@ -115,21 +115,29 @@ def Cd_G1(v):
 
 
 def take_closest(lst, target, start, end):
-    if end - start == 2:
-        closest = 0
-        for i in range(0, 2):
-            if abs(target-lst[i]) < abs(target-lst[closest]):
-                closest = i
-        return lst[closest]
+    min_diff = float("inf")
+    closest_num = None
 
-    mid = (start + end) // 2
-    if target == lst[mid]:
-        return target
+    while start <= end:
+        mid = (start + end) // 2
+        if mid + 1 < len(lst):
+            min_diff_right = abs(lst[mid+1] - target)
+        if mid > 0:
+            min_diff_left = abs(lst[mid-1] - target)
 
-    if target < lst[mid]:
-        return take_closest(lst, target, start, mid-1)
-    else:
-        return take_closest(lst, target, mid+1, end)
+        if min_diff_left < min_diff:
+            min_diff = min_diff_left
+            closest_num = lst[mid-1]
+        if min_diff_right < min_diff:
+            min_diff = min_diff_right
+            closest_num = lst[mid+1]
+        if lst[mid] < target:
+            start = mid + 1
+        elif lst[min_diff_left > target]:
+            end = mid - 1
+        else:
+            return lst[mid]
+    return closest_num
 
 
 def convert_deg_to_mils(deg):
@@ -170,7 +178,7 @@ def calculate_trajectory(a, v, x, y, p, C, A, m, g, timestep, time):
     return trajectory
 
 
-def findAngle(d, high, low, ang, tolerance, counter):
+def find_angle(d, high, low, ang, tolerance, counter):
     # print(high, low)
     traj = calculate_trajectory(ang, v, x, y, p, C, A, m, g, timestep, time)
     # traj.print_data()
@@ -180,7 +188,7 @@ def findAngle(d, high, low, ang, tolerance, counter):
 
     if traj.d_final() < d:
         low = ang
-        return findAngle(d, high, low, ang + (high - low) / 2, 0.01, counter - 1)
+        return find_angle(d, high, low, ang + (high - low) / 2, 0.01, counter - 1)
     else:
         high = ang
-        return findAngle(d, high, low, ang - (high - low) / 2, 0.01, counter - 1)
+        return find_angle(d, high, low, ang - (high - low) / 2, 0.01, counter - 1)
